@@ -1,0 +1,1126 @@
+<title>Buildy Street Scene</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-width column. Header, the rotating flat street scene, then a small test-controls panel. Single green look by choice. */
+:root {
+  --green-1: #5C8064; --green-2: #3A5A40; --green-3: #2A4030;
+  --white-1: #FFFFFF; --white-2: #F1F0EC; --white-3: #DEDCD5;
+  --gray-1: #4B4E4B;  --gray-2: #343634;  --gray-3: #232523;
+  --font: 'Inter', 'Heebo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--green-1);
+  color: var(--white-1);
+  font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px calc(120px + env(safe-area-inset-bottom, 0px));
+}
+.app { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 4px; }
+.top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.greet { font-size: 15px; font-weight: 500; color: var(--white-1); }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--white-1); color: var(--gray-2);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 0 var(--green-3);
+}
+.icon-btn:focus-visible, .panel button:focus-visible { outline: 2px solid var(--green-2); outline-offset: 2px; }
+h1 { margin: 0; font-size: 32px; line-height: 38px; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+.scene { position: relative; width: 100%; aspect-ratio: 1 / 1.1; max-width: 100%; }
+.scene canvas { display: block; width: 100% !important; height: 100% !important; }
+.panel {
+  margin-top: 8px; background: var(--white-1); color: var(--gray-3);
+  border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 3px 0 var(--green-3);
+}
+.panel-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-1); }
+.ctl { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ctl > span { font-size: 15px; font-weight: 500; }
+.seg { display: flex; gap: 4px; background: var(--white-2); padding: 3px; border-radius: 12px; }
+.seg button, .step button {
+  min-width: 44px; height: 38px; border: 0; border-radius: 9px; cursor: pointer;
+  background: transparent; color: var(--gray-2); font: 600 14px var(--font);
+}
+.seg button[aria-pressed="true"] { background: var(--white-1); color: var(--gray-3); box-shadow: 0 1px 0 var(--white-3); }
+.step { display: flex; align-items: center; gap: 4px; background: var(--white-2); padding: 3px; border-radius: 12px; }
+.step output { min-width: 28px; text-align: center; font: 700 16px var(--font); font-variant-numeric: tabular-nums; }
+.play { height: 44px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer; background: var(--gray-3); color: var(--white-1); font: 600 15px var(--font); }
+.note { margin: 0; flex: 1 1 180px; min-width: 0; font-size: 13px; line-height: 18px; color: var(--gray-1); }
+
+/* Home cards: white, big round corners, a flat green "lip" instead of a soft shadow */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+.card {
+  background: var(--white-1); color: var(--gray-3); border-radius: 24px; padding: 16px 18px;
+  box-shadow: 0 3px 0 var(--green-3); border: 0; text-align: left; font: inherit; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+button.card { cursor: pointer; }
+.card:focus-visible { outline: 2px solid var(--white-1); outline-offset: 3px; }
+.card.wide { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.card-label { font-size: 13px; font-weight: 500; color: var(--gray-1); }
+.money-num { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.money-num b { font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.money-num span { font-size: 17px; font-weight: 500; color: var(--gray-1); font-variant-numeric: tabular-nums; }
+.card-sub { font-size: 13px; color: var(--gray-1); }
+.ring { position: relative; width: 76px; height: 76px; flex-shrink: 0; }
+.ring svg { display: block; transform: rotate(-90deg); }
+.ring b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mini-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mini-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--white-2); color: var(--gray-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.big { font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.code { letter-spacing: 0.12em; }
+
+/* Door code timer: the ring drains over the 3 seconds the code stays visible */
+@keyframes drain { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 100.53; } }
+#timerArc.run { animation: drain 3s linear forwards; }
+
+/* Money tab */
+.months { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-top: 12px; }
+.months::-webkit-scrollbar { display: none; }
+.month-page { flex: 0 0 100%; scroll-snap-align: center; padding: 0 1px 4px; min-width: 0; }
+.ring-card { align-items: center; text-align: center; padding: 18px 18px 20px; gap: 10px; }
+.big-ring { position: relative; width: 200px; height: 200px; max-width: 100%; }
+.big-ring svg { display: block; max-width: 100%; height: auto; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.ring-center b { font-size: 34px; line-height: 40px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ring-center span { font-size: 15px; font-weight: 500; color: var(--gray-1); font-variant-numeric: tabular-nums; }
+.dots { display: flex; justify-content: center; gap: 2px; margin: 6px 0 0; }
+.dot-btn { width: 28px; height: 28px; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.dot-btn span { width: 7px; height: 7px; border-radius: 50%; background: var(--green-2); }
+.dot-btn[aria-current="true"] span { background: var(--white-1); }
+.actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.act { border: 0; background: transparent; color: var(--white-1); font: 500 12px var(--font); display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 0; text-align: center; }
+.act-ic { width: 54px; height: 54px; border-radius: 50%; background: var(--white-1); color: var(--gray-2); display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 0 var(--green-3); }
+.pay-btn { width: 100%; height: 56px; border: 0; border-radius: 999px; background: var(--gray-3); color: var(--white-1); font: 600 17px var(--font); cursor: pointer; margin-top: 14px; }
+.pay-btn:disabled { opacity: 0.45; cursor: default; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 22px 2px 10px; }
+.list-title { font-size: 17px; font-weight: 600; }
+.seg.light { background: rgba(255, 255, 255, 0.18); }
+.seg.light button { color: var(--white-1); }
+.seg.light button[aria-pressed="true"] { background: var(--white-1); color: var(--gray-3); box-shadow: none; }
+.group { background: var(--white-1); color: var(--gray-3); border-radius: 20px; box-shadow: 0 3px 0 var(--green-3); overflow: hidden; }
+.row { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; border: 0; border-top: 1px solid var(--white-2); background: transparent; color: inherit; font: inherit; text-align: left; }
+.group > .row:first-child { border-top: 0; }
+button.row { cursor: pointer; }
+button.row:active { background: var(--white-2); }
+.row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-title { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-sub { font-size: 13px; color: var(--gray-1); }
+.row-amt { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.st { flex-shrink: 0; }
+.st.paid { width: 24px; height: 24px; border-radius: 50%; background: var(--green-2); display: flex; align-items: center; justify-content: center; }
+.st.unpaid { font-size: 13px; font-weight: 500; color: var(--gray-1); }
+.row.empty { color: var(--gray-1); justify-content: center; }
+
+/* Calculator sheet: slides up from the bottom */
+.backdrop { position: fixed; inset: 0; background: rgba(35, 37, 35, 0.45); opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; z-index: 20; }
+.backdrop.open { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
+.sheet {
+  position: fixed; left: 50%; bottom: 0; width: min(420px, 100%);
+  transform: translate(-50%, 105%); visibility: hidden;
+  transition: transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.38s; z-index: 21;
+  background: var(--green-2); color: var(--white-1); border-radius: 28px 28px 0 0;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.sheet.open { transform: translate(-50%, 0); visibility: visible; transition: transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.sheet:focus { outline: none; }
+.grabber { width: 40px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.35); margin-bottom: 6px; }
+.sheet .card-label { color: var(--white-3); }
+.calc-amount { font-size: 56px; line-height: 64px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calc-result { font-size: 15px; font-weight: 500; color: var(--white-2); min-height: 22px; text-align: center; }
+.keypad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; margin-top: 4px; }
+.key { height: 56px; border: 0; background: transparent; color: var(--white-1); font: 600 26px var(--font); border-radius: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.key:active { background: rgba(255, 255, 255, 0.12); }
+.pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 4px; }
+.pill { height: 48px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: var(--white-1); font: 600 15px var(--font); cursor: pointer; }
+.pill[aria-pressed="true"] { background: var(--white-1); color: var(--gray-3); }
+.sheet .pay-btn { margin-top: 6px; }
+.key:focus-visible, .pill:focus-visible, .pay-btn:focus-visible, .act:focus-visible, .dot-btn:focus-visible { outline: 2px solid var(--white-1); outline-offset: 2px; }
+.row:focus-visible { outline: 2px solid var(--green-2); outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet.open, .backdrop, .backdrop.open { transition: none; } }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 10px); background: var(--gray-3); color: var(--white-1); padding: 10px 16px; border-radius: 999px; font: 500 14px var(--font); opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease; z-index: 30; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* Floating tab bar */
+.tabbar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(388px, calc(100% - 32px));
+  background: var(--white-1); border-radius: 999px; padding: 6px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
+  box-shadow: 0 3px 0 var(--green-3); z-index: 5;
+}
+.tab {
+  border: 0; background: transparent; border-radius: 999px; cursor: pointer; min-height: 54px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--gray-1); font: 500 12px var(--font);
+}
+.tab[aria-current="page"] { background: var(--white-2); color: var(--gray-3); font-weight: 600; }
+.tab:focus-visible { outline: 2px solid var(--green-2); outline-offset: 1px; }
+</style>
+
+<div class="app">
+  <section id="homeView" class="view">
+  <div class="top">
+    <span class="greet">Good evening, Dana</span>
+    <button class="icon-btn" aria-label="Settings">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.830-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </div>
+  <h1>Herzl 12</h1>
+
+  <div class="scene" id="scene" role="img" aria-label="A white Tel Aviv style corner building with a rounded corner and curved balconies, slowly turning on a square white plate, with tiny people walking past"></div>
+
+  <div class="cards">
+    <button class="card wide" id="moneyCard" aria-label="Money this month, open the Money tab">
+      <div style="display:flex; flex-direction:column; gap:6px; min-width:0">
+        <span class="card-label" id="moneyMonth">November</span>
+        <div class="money-num"><b id="moneyIn">₪6,300</b><span id="moneyGoal">/ ₪9,600</span></div>
+        <span class="card-sub" id="moneySub">16 of 24 apartments paid</span>
+      </div>
+      <div class="ring" aria-hidden="true">
+        <svg width="76" height="76" viewBox="0 0 76 76">
+          <circle cx="38" cy="38" r="31" fill="none" stroke="#DEDCD5" stroke-width="9"></circle>
+          <circle id="ringArc" cx="38" cy="38" r="31" fill="none" stroke="#3A5A40" stroke-width="9" stroke-linecap="round" stroke-dasharray="194.8" stroke-dashoffset="66.2"></circle>
+        </svg>
+        <b id="ringPct">66%</b>
+      </div>
+    </button>
+
+    <button class="card" aria-label="Issues, 3 open">
+      <div class="mini-top">
+        <span class="card-label">Issues</span>
+        <span class="mini-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg></span>
+      </div>
+      <span class="big">3</span>
+      <span class="card-sub" id="issuesSub">open in the building</span>
+    </button>
+
+    <button class="card" id="doorCard" aria-label="Door code, tap to show">
+      <div class="mini-top">
+        <span class="card-label">Door code</span>
+        <span class="mini-icon" id="doorIcon" style="position: relative">
+          <svg id="keyIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l9-9M17 6l2 2"></path></svg>
+          <svg id="copyIcon" style="display:none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+          <svg id="checkIcon" style="display:none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+          <svg id="timerRing" style="display:none; position:absolute; left:0; top:0" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><circle id="timerArc" cx="18" cy="18" r="16" fill="none" stroke="#3A5A40" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="0" transform="rotate(-90 18 18)"></circle></svg>
+        </span>
+      </div>
+      <span class="big code" id="doorCode">••••</span>
+      <span class="card-sub" id="doorSub">Tap to show</span>
+    </button>
+  </div>
+
+  </section>
+
+  <section id="moneyView" class="view" hidden>
+    <div class="top"><span class="greet">Herzl 12</span></div>
+    <h1>Money</h1>
+
+    <div class="months" id="months" aria-label="Months. Swipe to change month"></div>
+    <div class="dots" id="monthDots"></div>
+
+    <div class="actions" id="headActions">
+      <button class="act" id="actMarkAll"><span class="act-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12.5l4 4L15 8"></path><path d="M10.5 16.5L19 8"></path></svg></span>Mark all paid</button>
+      <button class="act" id="actCalc"><span class="act-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"></rect><path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 15.5h.01M12 15.5h.01M15 15.5h.01"></path></svg></span>Calculate</button>
+      <button class="act" data-soon><span class="act-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path></svg></span>Payment log</button>
+      <button class="act" data-soon><span class="act-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></span>Settings</button>
+    </div>
+    <button class="pay-btn" id="payBtn" hidden>Pay</button>
+
+    <div class="list-head">
+      <span class="list-title" id="listTitle">Apartments</span>
+      <div class="seg light" id="filters" role="group" aria-label="Show">
+        <button data-f="all" aria-pressed="true">All</button>
+        <button data-f="unpaid" aria-pressed="false">Unpaid</button>
+        <button data-f="paid" aria-pressed="false">Paid</button>
+      </div>
+    </div>
+    <div class="group" id="aptList"></div>
+  </section>
+
+  <section class="panel" aria-label="Test controls">
+    <span class="panel-label">Test controls</span>
+    <div class="ctl">
+      <span>View as</span>
+      <div class="seg" role="group" aria-label="View as">
+        <button data-view="head" aria-pressed="true">Committee</button>
+        <button data-view="resident" aria-pressed="false">Resident</button>
+      </div>
+    </div>
+    <div class="ctl home-only">
+      <span>Floors above the street</span>
+      <div class="step">
+        <button id="floorsDown" aria-label="One floor less">−</button>
+        <output id="floorsOut">3</output>
+        <button id="floorsUp" aria-label="One floor more">+</button>
+      </div>
+    </div>
+    <div class="ctl home-only">
+      <span>One turn</span>
+      <div class="seg" role="group" aria-label="Turn speed">
+        <button data-sec="30" aria-pressed="false">30s</button>
+        <button data-sec="60" aria-pressed="true">60s</button>
+        <button data-sec="90" aria-pressed="false">90s</button>
+      </div>
+    </div>
+    <div class="ctl home-only">
+      <p class="note">Flat colors only. White windows; some glow with soft green light from inside.</p>
+      <button class="play" id="play">Pause</button>
+    </div>
+  </section>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="tab" aria-current="page">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"></path></svg>
+      Home
+    </button>
+    <button class="tab">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5A8.5 8.5 0 0 1 20.5 12H12z" fill="currentColor" stroke="none"></path></svg>
+      Money
+    </button>
+    <button class="tab">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg>
+      Issues
+    </button>
+    <button class="tab">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.7 3 2.6 3.5 5.2"></path></svg>
+      People
+    </button>
+  </nav>
+
+  <div class="backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="calcSheet" role="dialog" aria-modal="true" aria-labelledby="calcTitle" tabindex="-1">
+    <div class="grabber" aria-hidden="true"></div>
+    <span class="card-label" id="calcTitle">Monthly budget</span>
+    <div class="calc-amount" id="calcAmount" aria-live="polite">₪0</div>
+    <div class="calc-result" id="calcResult">Type the building's monthly budget</div>
+    <div class="keypad" id="keypad">
+      <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+      <button class="key" data-k=".">.</button><button class="key" data-k="0">0</button>
+      <button class="key" data-k="back" aria-label="Delete"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+    </div>
+    <div class="pills" role="group" aria-label="How to split">
+      <button class="pill" data-split="equal" aria-pressed="true">Split equally</button>
+      <button class="pill" data-split="size" aria-pressed="false">By apartment size</button>
+    </div>
+    <button class="pay-btn" id="calcApply" disabled>Apply to November</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function () {
+  // Home cards: committee vs resident view, door code reveal, tab highlight (mock data)
+  const C = 194.8;
+  const views = {
+    head: { inn: '₪6,300', goal: '/ ₪9,600', sub: '16 of 24 apartments paid', pct: 66, issues: 'open in the building' },
+    resident: { inn: '₪400', goal: '/ ₪400', sub: 'Your fee is paid. Thank you', pct: 100, issues: 'open, 1 reported by you' }
+  };
+  const $ = (id) => document.getElementById(id);
+  function setView(v) {
+    const d = views[v];
+    $('moneyIn').textContent = d.inn; $('moneyGoal').textContent = d.goal; $('moneySub').textContent = d.sub;
+    $('ringPct').textContent = d.pct + '%';
+    $('ringArc').setAttribute('stroke-dashoffset', String(C * (1 - d.pct / 100)));
+    $('issuesSub').textContent = d.issues;
+    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  }
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  // Door code: tap shows it for 3 seconds. The key icon turns into a copy icon inside a draining timer ring.
+  // Tapping again inside those 3 seconds copies the code.
+  const CODE = '4821';
+  // After a copy the copy icon turns into a check; the ring keeps draining to the end, then everything resets.
+  const keyIcon = $('keyIcon'), copyIcon = $('copyIcon'), checkIcon = $('checkIcon'), timerRing = $('timerRing'), timerArc = $('timerArc');
+  let hideTimer = null, copied = false;
+  function setIcon(revealed) {
+    keyIcon.style.display = revealed ? 'none' : '';
+    copyIcon.style.display = revealed ? '' : 'none';
+    checkIcon.style.display = 'none';
+    timerRing.style.display = revealed ? '' : 'none';
+    timerArc.classList.remove('run');
+    if (revealed) { void timerArc.getBoundingClientRect(); timerArc.classList.add('run'); }
+  }
+  function hideCode() {
+    clearTimeout(hideTimer); hideTimer = null; copied = false;
+    $('doorCode').textContent = '••••';
+    $('doorSub').textContent = 'Tap to show';
+    setIcon(false);
+  }
+  $('doorCard').addEventListener('click', () => {
+    if (hideTimer) {
+      if (copied) return;
+      const copy = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(CODE) : Promise.reject();
+      copy.then(() => {
+        copied = true;
+        copyIcon.style.display = 'none';
+        checkIcon.style.display = '';
+        $('doorSub').textContent = 'Code copied';
+      }).catch(() => { $('doorSub').textContent = 'Copy not allowed here'; });
+      return;
+    }
+    $('doorCode').textContent = CODE;
+    $('doorSub').textContent = 'Tap again to copy';
+    setIcon(true);
+    hideTimer = setTimeout(hideCode, 3000);
+  });
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.removeAttribute('aria-current'));
+    t.setAttribute('aria-current', 'page');
+  }));
+})();
+</script>
+
+<script>
+(function () {
+  // Money tab (mock data, demo payments only)
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ['Yossi Cohen', 'Maya Friedman', 'Omer Shapiro', 'Noa Ben David', 'Avi Mizrahi', 'Tamar Katz', 'Dana Levi', 'Eitan Golan',
+    'Noa Peretz', 'Ronit Avraham', 'Itai Bar', 'Shira Klein', 'Gil Amar', 'Lior Dahan', 'Yael Segal', 'Moshe Azulay',
+    'Hila Rosen', 'Amit Levy', 'Rina Biton', 'Uri Hadad', 'Michal Oren', 'Ben Sasson', 'Talia Ezra', 'Ido Navon'];
+  const SIZES = [72, 85, 96, 110, 72, 85, 96, 110, 72, 85, 96, 110, 78, 90, 100, 118, 78, 90, 100, 118, 80, 92, 104, 120];
+  const ME = 8; // the resident in "View as: Resident" lives in apartment 9
+  const N = NAMES.length;
+  const baseFees = NAMES.map(() => 400);
+  const month = (label, short, paidIf) => ({ label, short, fees: baseFees.slice(), paid: new Set(NAMES.map((_, i) => i).filter(paidIf)) });
+  const months = [
+    month('September 2026', 'September', () => true),
+    month('October 2026', 'October', (i) => i !== 5),
+    month('November 2026', 'November', (i) => i % 3 !== 2)
+  ];
+  const CUR = months.length - 1;
+  let view = 'head', page = CUR, filter = 'all';
+  const fmt = (n) => '₪' + Math.round(n).toLocaleString('en-US');
+  const total = (m, paidOnly) => m.fees.reduce((a, f, i) => a + (paidOnly && !m.paid.has(i) ? 0 : f), 0);
+  const RC = 2 * Math.PI * 84;
+  const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
+
+  function stats(m) {
+    if (view === 'resident') {
+      const fee = m.fees[ME], p = m.paid.has(ME);
+      return { inn: p ? fee : 0, goal: fee, pct: p ? 100 : 0, sub: p ? 'Your fee is paid' : 'Not paid yet' };
+    }
+    const g = total(m), c = total(m, true);
+    return { inn: c, goal: g, pct: g ? Math.round(c / g * 100) : 0, sub: m.paid.size + ' of ' + N + ' apartments paid' };
+  }
+
+  function renderMonths() {
+    const box = $('months');
+    box.innerHTML = months.map((m, i) => {
+      const s = stats(m), off = RC * (1 - s.pct / 100);
+      return '<div class="month-page"><div class="card ring-card">' +
+        '<span class="card-label">' + m.label + (i === CUR ? ' · this month' : '') + '</span>' +
+        '<div class="big-ring"><svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">' +
+        '<circle cx="100" cy="100" r="84" fill="none" stroke="#DEDCD5" stroke-width="16"></circle>' +
+        '<circle cx="100" cy="100" r="84" fill="none" stroke="#3A5A40" stroke-width="16" stroke-linecap="round" stroke-dasharray="' + RC + '" stroke-dashoffset="' + off + '" transform="rotate(-90 100 100)"></circle>' +
+        '</svg><div class="ring-center"><b>' + fmt(s.inn) + '</b><span>of ' + fmt(s.goal) + '</span></div></div>' +
+        '<span class="card-sub">' + s.sub + '</span></div></div>';
+    }).join('');
+    box.scrollLeft = page * box.clientWidth;
+    renderDots();
+  }
+  function renderDots() {
+    $('monthDots').innerHTML = months.map((m, i) =>
+      '<button class="dot-btn" data-p="' + i + '" aria-label="' + m.label + '"' + (i === page ? ' aria-current="true"' : '') + '><span></span></button>').join('');
+  }
+  function row(title, fee, paid, idx) {
+    const btn = idx !== undefined;
+    const tag = btn ? 'button' : 'div';
+    return '<' + tag + ' class="row"' + (btn ? ' data-i="' + idx + '" aria-label="' + title + ', ' + (paid ? 'paid, tap to undo' : 'unpaid, tap to mark paid') + '"' : '') + '>' +
+      '<span class="row-main"><span class="row-title">' + title + '</span></span>' +
+      '<span class="row-amt">' + fmt(fee) + '</span>' +
+      (paid ? '<span class="st paid" aria-label="Paid">' + CHECK + '</span>' : '<span class="st unpaid">Unpaid</span>') +
+      '</' + tag + '>';
+  }
+  function renderList() {
+    const m = months[page];
+    if (view === 'resident') {
+      $('listTitle').textContent = 'Your payments · Apartment ' + (ME + 1);
+      $('filters').hidden = true;
+      $('aptList').innerHTML = months.slice().reverse().map((mm) => row(mm.label, mm.fees[ME], mm.paid.has(ME))).join('');
+      return;
+    }
+    $('filters').hidden = false;
+    $('listTitle').textContent = 'Apartments · ' + m.short;
+    const editable = page === CUR;
+    const rows = NAMES.map((n, i) => ({ n, i, p: m.paid.has(i) }))
+      .filter((r) => filter === 'all' || (filter === 'paid' ? r.p : !r.p))
+      .map((r) => row('Apt ' + (r.i + 1) + ' · ' + r.n, m.fees[r.i], r.p, editable ? r.i : undefined));
+    $('aptList').innerHTML = rows.join('') || '<div class="row empty">No apartments here</div>';
+  }
+  function renderControls() {
+    const head = view === 'head';
+    $('headActions').hidden = !head;
+    const m = months[CUR];
+    const showPay = !head && !m.paid.has(ME);
+    $('payBtn').hidden = !showPay;
+    $('payBtn').textContent = 'Pay ' + fmt(m.fees[ME]) + ' · demo';
+  }
+  function updateHome() {
+    const m = months[CUR], s = stats(m);
+    $('moneyMonth').textContent = m.short;
+    $('moneyIn').textContent = fmt(s.inn);
+    $('moneyGoal').textContent = '/ ' + fmt(s.goal);
+    $('moneySub').textContent = s.sub;
+    $('ringPct').textContent = s.pct + '%';
+    $('ringArc').setAttribute('stroke-dashoffset', String(194.8 * (1 - s.pct / 100)));
+  }
+  function renderAll() { renderMonths(); renderList(); renderControls(); updateHome(); }
+
+  let tt;
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2200); }
+
+  // Swipe between months
+  let st;
+  $('months').addEventListener('scroll', () => {
+    clearTimeout(st);
+    st = setTimeout(() => {
+      const b = $('months');
+      const p = Math.max(0, Math.min(months.length - 1, Math.round(b.scrollLeft / b.clientWidth)));
+      if (p !== page) { page = p; renderDots(); renderList(); }
+    }, 80);
+  });
+  $('monthDots').addEventListener('click', (e) => {
+    const d = e.target.closest('[data-p]'); if (!d) return;
+    page = Number(d.dataset.p);
+    $('months').scrollTo({ left: page * $('months').clientWidth, behavior: 'smooth' });
+    renderDots(); renderList();
+  });
+
+  // Head: tap a row in the current month to mark it paid (or undo), mark all
+  $('aptList').addEventListener('click', (e) => {
+    const r = e.target.closest('[data-i]'); if (!r) return;
+    const i = Number(r.dataset.i), set = months[CUR].paid;
+    if (set.has(i)) set.delete(i); else set.add(i);
+    renderAll();
+  });
+  $('actMarkAll').addEventListener('click', () => {
+    NAMES.forEach((_, i) => months[CUR].paid.add(i));
+    page = CUR; renderAll();
+    toast('All ' + N + ' apartments marked paid for ' + months[CUR].short);
+  });
+  document.querySelectorAll('[data-soon]').forEach((b) => b.addEventListener('click', () => toast('Not in this prototype yet')));
+  $('filters').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-f]'); if (!b) return;
+    filter = b.dataset.f;
+    document.querySelectorAll('#filters [data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    renderList();
+  });
+
+  // Resident: demo Pay
+  $('payBtn').addEventListener('click', () => {
+    months[CUR].paid.add(ME);
+    renderAll();
+    toast('Paid ' + fmt(months[CUR].fees[ME]) + '. Demo only, no real money');
+  });
+
+  // View as (runs after the Home card script, so live numbers win)
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { view = b.dataset.view; renderAll(); }));
+
+  // Calculator: the special numpad, sliding up from the bottom
+  let digits = '0', split = 'equal', lastFocus = null;
+  const amount = () => parseFloat(digits) || 0;
+  function perApartment(b) {
+    if (split === 'equal') return NAMES.map(() => b / N);
+    const tot = SIZES.reduce((a, s) => a + s, 0);
+    return SIZES.map((s) => b * s / tot);
+  }
+  function renderCalc() {
+    const [whole, dec] = digits.split('.');
+    $('calcAmount').textContent = '₪' + Number(whole).toLocaleString('en-US') + (dec !== undefined ? '.' + dec : '');
+    const b = amount();
+    let msg = "Type the building's monthly budget";
+    if (b) {
+      const per = perApartment(b);
+      msg = split === 'equal' ? fmt(per[0]) + ' per apartment' : fmt(Math.min.apply(null, per)) + ' to ' + fmt(Math.max.apply(null, per)) + ' per apartment, by size';
+    }
+    $('calcResult').textContent = msg;
+    $('calcApply').disabled = !b;
+    $('calcApply').textContent = 'Apply to ' + months[CUR].short;
+  }
+  function openCalc() {
+    lastFocus = document.activeElement;
+    digits = '0'; renderCalc();
+    $('sheetBackdrop').classList.add('open');
+    $('calcSheet').classList.add('open');
+    setTimeout(() => $('calcSheet').focus(), 50);
+  }
+  function closeCalc() {
+    $('sheetBackdrop').classList.remove('open');
+    $('calcSheet').classList.remove('open');
+    if (lastFocus) lastFocus.focus();
+  }
+  $('actCalc').addEventListener('click', openCalc);
+  $('sheetBackdrop').addEventListener('click', closeCalc);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('calcSheet').classList.contains('open')) closeCalc(); });
+  $('keypad').addEventListener('click', (e) => {
+    const k = e.target.closest('[data-k]'); if (!k) return;
+    const key = k.dataset.k;
+    if (key === 'back') digits = digits.length > 1 ? digits.slice(0, -1) : '0';
+    else if (key === '.') { if (!digits.includes('.')) digits += '.'; }
+    else {
+      if (digits.includes('.') && digits.split('.')[1].length >= 2) return;
+      if (digits.replace('.', '').length >= 7) return;
+      digits = digits === '0' ? key : digits + key;
+    }
+    renderCalc();
+  });
+  document.querySelectorAll('[data-split]').forEach((b) => b.addEventListener('click', () => {
+    split = b.dataset.split;
+    document.querySelectorAll('[data-split]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    renderCalc();
+  }));
+  $('calcApply').addEventListener('click', () => {
+    const b = amount(); if (!b) return;
+    months[CUR].fees = perApartment(b).map((v) => Math.round(v));
+    closeCalc(); page = CUR; renderAll();
+    toast(months[CUR].short + ' fees updated. Past months keep theirs');
+  });
+
+  // Tabs: Home and Money switch views; Issues and People are not designed yet
+  const TABS = ['home', 'money', 'issues', 'people'];
+  let current = 'home';
+  const tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  function show(name) {
+    current = name;
+    $('homeView').hidden = name !== 'home';
+    $('moneyView').hidden = name !== 'money';
+    document.querySelectorAll('.home-only').forEach((el) => { el.hidden = name !== 'home'; });
+    tabs.forEach((t, i) => { if (TABS[i] === name) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+    window.scrollTo(0, 0);
+    if (name === 'money') requestAnimationFrame(renderAll);
+  }
+  tabs.forEach((t, i) => t.addEventListener('click', () => {
+    const name = TABS[i];
+    if (name === 'home' || name === 'money') show(name);
+    else { show(current); toast(name === 'issues' ? 'Issues tab comes next' : 'People tab comes later'); }
+  }));
+  $('moneyCard').addEventListener('click', () => show('money'));
+
+  renderAll();
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  const PAL = {
+    green: [0x5C8064, 0x3A5A40, 0x2A4030],
+    white: [0xFFFFFF, 0xF1F0EC, 0xDEDCD5],
+    gray:  [0x4B4E4B, 0x343634, 0x232523]
+  };
+  // The light turns with the scene, so each side keeps its own fixed shade while it rotates.
+  // Light comes from the L's inner corner side, so shade and shadows fall diagonally toward the rounded outer corner.
+  const LIGHT_BASE = new THREE.Vector3(-0.6, 1, -0.6).normalize();
+  const LIGHT = LIGHT_BASE.clone();
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+  // Flat 3-shade shading: each surface takes exactly one palette shade by how it faces a fixed light.
+  const VS = [
+    'varying vec3 vN;',
+    'void main(){',
+    '  vec4 p = vec4(position, 1.0);',
+    '  vec3 n = normal;',
+    '#ifdef USE_INSTANCING',
+    '  p = instanceMatrix * p;',
+    '  n = mat3(instanceMatrix) * n;',
+    '#endif',
+    '  vN = normalize(mat3(modelMatrix) * n);',
+    '  gl_Position = projectionMatrix * viewMatrix * modelMatrix * p;',
+    '}'
+  ].join('\n');
+  const FS_WALL = 'uniform vec3 c0; uniform vec3 c1; uniform vec3 c2; uniform vec3 L; varying vec3 vN; void main(){ float d = dot(normalize(vN), L); gl_FragColor = vec4(d > 0.62 ? c0 : (d > 0.04 ? c1 : c2), 1.0); }';
+  // Window glass: always one shade lighter than the wall it sits in, so it reads on both lit and shaded walls.
+  const FS_GLASS = 'uniform vec3 c0; uniform vec3 c1; uniform vec3 c2; uniform vec3 L; varying vec3 vN; void main(){ float d = dot(normalize(vN), L); gl_FragColor = vec4(d > 0.04 ? c0 : c1, 1.0); }';
+  function shaded(name, fs) {
+    const p = PAL[name];
+    return new THREE.ShaderMaterial({
+      uniforms: { c0: { value: new THREE.Color(p[0]) }, c1: { value: new THREE.Color(p[1]) }, c2: { value: new THREE.Color(p[2]) }, L: { value: LIGHT } },
+      vertexShader: VS, fragmentShader: fs || FS_WALL
+    });
+  }
+  // Leaves use only the two lighter greens, so round plants never get a dark rim that looks like an outline.
+  const FS_LEAF = 'uniform vec3 c0; uniform vec3 c1; uniform vec3 c2; uniform vec3 L; varying vec3 vN; void main(){ float d = dot(normalize(vN), L); gl_FragColor = vec4(d > 0.5 ? c0 : c1, 1.0); }';
+  const M = { leaf: shaded('green', FS_LEAF), green: shaded('green'), white: shaded('white'), gray: shaded('gray'), glass: shaded('white', FS_GLASS) };
+  const litMat = new THREE.MeshBasicMaterial({ color: PAL.green[0] });
+  const roofInset = new THREE.MeshBasicMaterial({ color: PAL.white[1] });
+  const shadowMat = new THREE.MeshBasicMaterial({ color: PAL.gray[2], transparent: true, opacity: 0.12, depthWrite: false });
+  const plateShadowMat = new THREE.MeshBasicMaterial({ color: PAL.green[2], transparent: true, opacity: 0.45, depthWrite: false });
+  // Soft halo around a lit window: even in the middle, fading only at the edges (no bright dot).
+  const glowTex = (function () {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(92,128,100,0.03)';
+    for (let k = 0; k < 14; k++) {
+      const i = 4 + k * 2.6, r = Math.max(2, 24 - k * 1.4);
+      const x = i, y = i * 0.75, w = 256 - 2 * i, h = 128 - 2 * i * 0.75;
+      g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+      g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
+      g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath(); g.fill();
+    }
+    const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; return t;
+  })();
+  const glowMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false });
+  // Even green light over the whole glass of a lit window
+  const tintMat = new THREE.MeshBasicMaterial({ color: PAL.green[0], transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+
+  // Shape helpers. Shapes are drawn in (x, -z) and laid flat, so world z = -shape y.
+  function rrShape(w, d, r) {
+    const s = new THREE.Shape(), x = -w / 2, y = -d / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + d - r); s.quadraticCurveTo(x + w, y + d, x + w - r, y + d);
+    s.lineTo(x + r, y + d); s.quadraticCurveTo(x, y + d, x, y + d - r);
+    s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+    return s;
+  }
+  // The corner building: front arm along the street, right arm going back, big rounded corner at front right.
+  const R = 14, CX = 11, CZ = 16;
+  function lShape(o) {
+    const s = new THREE.Shape();
+    s.moveTo(-25 - o, -6 + o);
+    s.lineTo(-25 - o, -30 - o);
+    s.lineTo(CX, -30 - o);
+    s.absarc(CX, -CZ, R + o, -Math.PI / 2, 0, false);
+    s.lineTo(25 + o, 30 + o);
+    s.lineTo(1 - o, 30 + o);
+    s.lineTo(1 - o, -6 + o);
+    s.closePath();
+    return s;
+  }
+  function sector(r0, r1) {
+    const s = new THREE.Shape();
+    s.absarc(CX, -CZ, r1, -Math.PI / 2, 0, false);
+    s.absarc(CX, -CZ, r0, 0, -Math.PI / 2, true);
+    s.closePath();
+    return s;
+  }
+  function extrude(shape, h, mat, y) {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, curveSegments: 18 });
+    g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, mat);
+    m.position.y = y;
+    return m;
+  }
+  function flatShape(shape, mat, y) {
+    const g = new THREE.ShapeGeometry(shape, 18);
+    g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, mat);
+    m.position.y = y;
+    return m;
+  }
+  function box(w, h, d, mat, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; }
+
+  // Sample an outline every ~1 unit, with tangent, outward normal and "near a sharp corner" flag.
+  function inPoly(pts, x, z) {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a.y > z) !== (b.y > z) && x < (b.x - a.x) * (z - a.y) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  }
+  function samples(o) {
+    const sh = lShape(o);
+    const N = Math.round(sh.getLength());
+    const pts = sh.getSpacedPoints(N).slice(0, N).map((p) => new THREE.Vector2(p.x, -p.y));
+    const out = pts.map((p, i) => {
+      const a = pts[(i - 1 + N) % N], b = pts[(i + 1) % N];
+      const t = new THREE.Vector2(b.x - a.x, b.y - a.y).normalize();
+      let n = new THREE.Vector2(-t.y, t.x);
+      if (inPoly(pts, p.x + n.x * 0.6, p.y + n.y * 0.6)) n.negate();
+      return { p, t, n, blocked: false };
+    });
+    for (let i = 0; i < N; i++) {
+      const a = pts[(i - 2 + N) % N], b = pts[i], c = pts[(i + 2) % N];
+      const d1 = new THREE.Vector2(b.x - a.x, b.y - a.y).normalize(), d2 = new THREE.Vector2(c.x - b.x, c.y - b.y).normalize();
+      if (d1.dot(d2) < Math.cos(35 * Math.PI / 180)) for (let k = -3; k <= 3; k++) out[(i + k + N) % N].blocked = true;
+    }
+    return out;
+  }
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // Irregular window runs along an outline, so floors never line up into a grid.
+  function windowRuns(S, rand, minW, maxW, minG, maxG, skip) {
+    const N = S.length, res = [];
+    let s = Math.floor(rand() * 4);
+    while (s < N) {
+      s += Math.floor(minG + rand() * (maxG - minG));
+      const w = Math.floor(minW + rand() * (maxW - minW));
+      const run = [];
+      for (let k = 0; k <= w && s < N; k++, s++) {
+        if (S[s].blocked || (skip && skip(S[s]))) { if (run.length) break; continue; }
+        run.push(s);
+      }
+      if (run.length >= 3) res.push(run);
+    }
+    return res;
+  }
+
+  // Scene, camera, renderer
+  const host = document.getElementById('scene');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x000000, 0);
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -500, 500);
+  const world = new THREE.Group();
+  scene.add(world);
+
+  const TOP = 2, PLATE = 88, HALF = PLATE / 2;
+  // Square white ground plate
+  world.add(extrude(rrShape(PLATE, PLATE, 8), 2, M.white, 0));
+  const ps = flatShape(rrShape(PLATE, PLATE, 8), plateShadowMat, -0.05);
+  ps.position.x = 3; ps.position.z = 3;
+  world.add(ps);
+
+  function roundShadow(r, x, z) {
+    const m = flatShape(new THREE.Shape().absarc(0, 0, r, 0, Math.PI * 2, false), shadowMat, TOP + 0.03);
+    m.position.x = x + 0.6; m.position.z = z + 0.6; world.add(m);
+  }
+  function place3(o, x, y, z) { o.position.set(x, y, z); return o; }
+  function blob(r, mat, x, y, z, sy) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat);
+    b.scale.set(1, sy || 1, 1); b.position.set(x, y, z); world.add(b); return b;
+  }
+  // Tree in the back yard of the L: square tree pit, tapered trunk with two branches, a cluster crown
+  const TX = -12, TZ = -16;
+  roundShadow(6, TX, TZ);
+  [[0, -3.5, 7.4, 0.8], [0, 3.5, 7.4, 0.8], [-3.5, 0, 0.8, 6], [3.5, 0, 0.8, 6]].forEach(([dx, dz, w, d]) => world.add(box(w, 0.6, d, M.white, TX + dx, TOP + 0.3, TZ + dz)));
+  world.add(place3(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.95, 9, 9), M.gray), TX, TOP + 4.5, TZ));
+  [[-1, 0.7], [1, -0.6]].forEach(([side, tw]) => {
+    const br = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.4, 4, 7), M.gray);
+    br.position.set(TX + side * 1.3, TOP + 7.2, TZ + tw);
+    br.rotation.z = -side * 0.75;
+    world.add(br);
+  });
+  [[0, 13.2, 0, 4.6], [-3.4, 11.4, 1.2, 3.3], [3.3, 11.8, -0.9, 3.5], [0.7, 16.2, 0.4, 3.1], [-1.5, 12.2, -3, 3.1], [1.8, 11, 3, 2.7]].forEach(([dx, y, dz, r]) => blob(r, M.leaf, TX + dx, TOP + y, TZ + dz, 1.05));
+  // Bush at the front left: a few leafy blobs with tiny white flowers
+  const BX = -38, BZ = 24;
+  roundShadow(5.2, BX, BZ);
+  const bushBlobs = [[0, 2.7, 0, 3.0], [-2.7, 2.0, 1.4, 2.3], [2.5, 2.0, -1.2, 2.4], [-0.6, 1.8, 2.8, 2.0], [1.3, 4.1, 0.5, 1.9], [-1.8, 3.4, -1.6, 1.8]];
+  bushBlobs.forEach(([dx, y, dz, r]) => blob(r, M.leaf, BX + dx, TOP + y, BZ + dz, 0.9));
+  const fr = rng(31);
+  for (let i = 0; i < 11; i++) {
+    const [dx, y, dz, r] = bushBlobs[i % bushBlobs.length];
+    const a = fr() * Math.PI * 2, up = 0.35 + fr() * 0.55;
+    const k = Math.sqrt(1 - up * up);
+    blob(0.42, M.white, BX + dx + Math.cos(a) * k * r, TOP + y + up * r * 0.9, BZ + dz + Math.sin(a) * k * r);
+  }
+  // Streetlight at the front, by the rounded corner
+  // Streetlight at the front left by the bush, its lamp reaching in toward the front of the building
+  const LX = -39, LZ = 33.5;
+  roundShadow(1.1, LX, LZ);
+  world.add(box(1.2, 20, 1.2, M.gray, LX, TOP + 10, LZ));
+  world.add(box(6, 1, 1, M.gray, LX + 2.6, TOP + 19.5, LZ));
+  world.add(box(3, 1.3, 3, M.white, LX + 5, TOP + 18.4, LZ));
+  // Bench against the back wall of the building, facing out to the back sidewalk
+  const BNX = 13, BNZ = -33.2;
+  const bsh = flatShape(rrShape(9, 4, 0.8), shadowMat, TOP + 0.03);
+  bsh.position.x = BNX + 0.6; bsh.position.z = BNZ + 0.4; world.add(bsh);
+  world.add(box(8, 0.5, 2.6, M.white, BNX, TOP + 2.1, BNZ));
+  world.add(box(8, 2.4, 0.5, M.white, BNX, TOP + 3.6, BNZ + 1.3));
+  [[-3.4, 1.1], [3.4, 1.1], [-3.4, -1.1], [3.4, -1.1]].forEach(([dx, dz]) => world.add(box(0.5, 1.9, 0.5, M.gray, BNX + dx, TOP + 0.95, BNZ + dz)));
+
+  // The building
+  const G = 11;            // ground floor height
+  const FLOOR = 10;
+  let building = null, runs = [], paneUnlit = null, paneLit = null, tintMesh = null;
+  // A small white pot with a leafy plant; the seed picks one of three plant shapes.
+  let potPick = Math.random;
+  function pot(x, y, z, seed) {
+    if (potPick() > 0.4) return; // only some balcony spots get a plant
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.62, 1.4, 12), M.white);
+    p.position.set(x, y + 0.7, z);
+    building.add(p);
+    const kind = Math.abs(Math.round(seed)) % 3;
+    const leaf = (r, dx, dy, dz, sy) => {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), M.leaf);
+      b.scale.set(1, sy || 1, 1); b.position.set(x + dx, y + 1.4 + dy, z + dz); building.add(b);
+    };
+    if (kind === 0) { leaf(1.15, 0, 0.9, 0); leaf(0.7, 0.6, 1.7, 0.2); }
+    else if (kind === 1) { leaf(0.75, 0, 0.8, 0, 1.2); leaf(0.6, 0, 1.9, 0, 1.3); leaf(0.42, 0, 2.8, 0, 1.3); }
+    else { leaf(0.75, -0.6, 0.6, 0); leaf(0.75, 0.6, 0.6, 0.2); leaf(0.65, 0, 1.2, -0.4); }
+  }
+  const DOOR = { x: -12, z: 27 };
+  const nearDoor = (s) => Math.abs(s.p.x - DOOR.x) < 4.5 && s.p.y > 20;
+
+  function paneMatrix(S, i, j, yc, h, off) {
+    off = off === undefined ? 0.12 : off;
+    const a = S[i], b = S[j];
+    const mx = (a.p.x + b.p.x) / 2, mz = (a.p.y + b.p.y) / 2;
+    const len = Math.hypot(b.p.x - a.p.x, b.p.y - a.p.y) + 0.08;
+    const nx = (a.n.x + b.n.x) / 2, nz = (a.n.y + b.n.y) / 2;
+    const tx = b.p.x - a.p.x, tz = b.p.y - a.p.y;
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-tz, tx));
+    return new THREE.Matrix4().compose(new THREE.Vector3(mx + nx * off, yc, mz + nz * off), q, new THREE.Vector3(len, h, 1));
+  }
+  // A window run: glass segments, an even green tint over each segment, and a soft halo on straight walls.
+  function makeRun(S, run, yc, h, lit, upper) {
+    const mats = [], tints = [];
+    for (let k = 0; k < run.length - 1; k++) {
+      mats.push(paneMatrix(S, run[k], run[k + 1], yc, h));
+      tints.push(paneMatrix(S, run[k], run[k + 1], yc, h + 0.2, 0.34));
+    }
+    const first = S[run[0]].t, lastT = S[run[run.length - 1]].t;
+    let glow = null;
+    if (first.dot(lastT) > 0.995) {
+      const a = S[run[0]].p, b = S[run[run.length - 1]].p, m = S[run[Math.floor(run.length / 2)]];
+      glow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), glowMat);
+      glow.scale.set(Math.hypot(b.x - a.x, b.y - a.y) + 4, h + 4, 1);
+      glow.position.set((a.x + b.x) / 2 + m.n.x * 0.3, yc, (a.y + b.y) / 2 + m.n.y * 0.3);
+      glow.rotation.y = Math.atan2(m.n.x, m.n.y);
+      building.add(glow);
+    }
+    const r = { mats, tints, lit, glow, upper };
+    runs.push(r);
+    return r;
+  }
+  function refreshPanes() {
+    let u = 0, l = 0, t = 0;
+    runs.forEach((r) => {
+      r.mats.forEach((mx) => { if (r.lit) paneLit.setMatrixAt(l++, mx); else paneUnlit.setMatrixAt(u++, mx); });
+      if (r.lit) r.tints.forEach((mx) => tintMesh.setMatrixAt(t++, mx));
+      if (r.glow) r.glow.visible = r.lit;
+    });
+    paneUnlit.count = u; paneLit.count = l; tintMesh.count = t;
+    paneUnlit.instanceMatrix.needsUpdate = true; paneLit.instanceMatrix.needsUpdate = true; tintMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  function buildBuilding(n) {
+    if (building) {
+      world.remove(building);
+      building.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    }
+    building = new THREE.Group();
+    runs = [];
+    const rand = rng(7 + n);
+    potPick = rng(41 + n);
+
+    // contact shadow
+    const sh = flatShape(lShape(1.8), shadowMat, TOP + 0.04);
+    sh.position.x = 2.5; sh.position.z = 2.5;
+    building.add(sh);
+
+    // Ground floor: recessed shop front, thin columns, a canopy, and the entrance
+    building.add(extrude(lShape(-3), G, M.white, TOP));
+    const S0 = samples(-3);
+    windowRuns(S0, rand, 7, 13, 2, 4, nearDoor).forEach((run) => makeRun(S0, run, TOP + 4.6, 7, rand() < 0.45, false));
+    const SC = samples(-0.9);
+    for (let i = 0; i < SC.length; i += 9) {
+      const s = SC[i];
+      if (s.blocked || nearDoor(s)) continue;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, G, 10), M.white);
+      col.position.set(s.p.x, TOP + G / 2, s.p.y);
+      building.add(col);
+    }
+    building.add(extrude(lShape(0.7), 1, M.white, TOP + G));
+    // entrance: lit door, small canopy, step
+    building.add(box(4.6, 8.4, 0.3, M.glass, DOOR.x, TOP + 4.2, DOOR.z + 0.15));
+    const dg = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), glowMat);
+    dg.scale.set(11, 13, 1); dg.position.set(DOOR.x, TOP + 4.6, DOOR.z + 0.4);
+    building.add(dg);
+    building.add(box(7, 0.6, 4.2, M.white, DOOR.x, TOP + 9.2, DOOR.z + 2.1));
+    building.add(box(7, 0.5, 2.4, M.white, DOOR.x, TOP + 0.25, DOOR.z + 1.2));
+
+    // Upper floors
+    const SU = samples(-1.2);
+    const base = TOP + G + 1;
+    for (let i = 0; i < n; i++) {
+      const yb = base + i * FLOOR;
+      building.add(extrude(lShape(-1.2), FLOOR, M.white, yb));
+      if (i < n - 1) building.add(extrude(lShape(0.4), 0.8, M.white, yb + FLOOR - 0.4));
+      // curved corner balcony
+      building.add(extrude(sector(R - 1.6, R + 3.4), 0.9, M.white, yb - 0.45));
+      building.add(extrude(sector(R + 3, R + 3.4), 3, M.white, yb + 0.45));
+      // small straight balconies, stacked like Tel Aviv
+      building.add(box(3, 0.9, 8, M.white, 25 - 1.2 + 1.5, yb, -14));
+      building.add(box(0.4, 3, 8, M.white, 25 - 1.2 + 2.8, yb + 1.95, -14));
+      building.add(box(7, 0.9, 3, M.white, -14, yb, 30 - 1.2 + 1.5));
+      building.add(box(7, 3, 0.4, M.white, -14, yb + 1.95, 30 - 1.2 + 2.8));
+      // windows
+      windowRuns(SU, rand, 4, 10, 3, 7).forEach((run) => makeRun(SU, run, yb + 4.6, 4.8, rand() < 0.2, true));
+      // potted plants on this floor's balconies
+      [-75, -45, -15].forEach((deg) => {
+        const a = deg * Math.PI / 180, rr0 = R + 1.7;
+        pot(CX + rr0 * Math.cos(a), yb + 0.45, CZ - rr0 * Math.sin(a), i * 3 + deg);
+      });
+      pot(25 - 1.2 + 1.6, yb + 0.45, -16.6, i + 11);
+      pot(25 - 1.2 + 1.6, yb + 0.45, -11.4, i + 17);
+      pot(-16.4, yb + 0.45, 30 - 1.2 + 1.6, i + 23);
+      pot(-11.6, yb + 0.45, 30 - 1.2 + 1.6, i + 29);
+    }
+    // Roof: slab, inset, small stair room
+    const yT = base + n * FLOOR;
+    building.add(extrude(lShape(0.5), 1.2, M.white, yT - 0.2));
+    building.add(flatShape(lShape(-2.2), roofInset, yT + 1.05));
+    building.add(box(9, 4, 7, M.white, -13, yT + 3, 14));
+
+    // Glass panes as two instanced meshes (unlit glass, lit green)
+    const total = runs.reduce((a, r) => a + r.mats.length, 0);
+    const paneGeo = new THREE.BoxGeometry(1, 1, 0.3);
+    paneUnlit = new THREE.InstancedMesh(paneGeo, M.glass, total);
+    paneLit = new THREE.InstancedMesh(paneGeo, M.glass, total);
+    tintMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), tintMat, total);
+    paneUnlit.frustumCulled = false; paneLit.frustumCulled = false; tintMesh.frustumCulled = false;
+    building.add(paneUnlit); building.add(paneLit); building.add(tintMesh);
+    refreshPanes();
+
+    world.add(building);
+    frame(n);
+  }
+
+  // Two puffy white clouds above the building. They belong to the scene, so they turn with it, and bob gently.
+  function makeCloud(k) {
+    const g = new THREE.Group();
+    [[0, 0, 0, 3.2], [3.4, -0.6, 0.3, 2.4], [-3.2, -0.7, -0.2, 2.3], [1.2, 1.7, -0.4, 2.1]].forEach(([x, y, z, r]) => {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), M.white);
+      m.position.set(x, y, z); m.scale.set(1, 0.8, 1);
+      g.add(m);
+    });
+    g.scale.setScalar(k);
+    world.add(g);
+    return g;
+  }
+  const clouds = [
+    { g: makeCloud(1.85), x: -18, z: -14, yo: 0, ph: 0 },
+    { g: makeCloud(1.4), x: 20, z: 11, yo: -5, ph: 2 }
+  ];
+  // Clouds drift slowly back and forth over the building (inside the turning scene), bobbing a little.
+  let cloudTime = 0;
+  function updateClouds(dt) {
+    cloudTime += dt;
+    const base = TOP + G + 1 + floors * FLOOR + 10;
+    clouds.forEach((c) => c.g.position.set(
+      c.x + Math.sin(cloudTime / 9 + c.ph) * 14,
+      base + c.yo + Math.sin(cloudTime / 1.7 + c.ph) * 0.6,
+      c.z + Math.cos(cloudTime / 13 + c.ph) * 6
+    ));
+  }
+
+  // Tiny pictogram people: flat sprites that always face the viewer
+  function rr(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
+    g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath(); g.fill();
+  }
+  function figureTexture(withPet) {
+    const c = document.createElement('canvas');
+    c.width = withPet ? 112 : 48; c.height = 96;
+    const g = c.getContext('2d');
+    g.fillStyle = '#232523';
+    g.beginPath(); g.arc(24, 13, 11.5, 0, Math.PI * 2); g.fill();
+    rr(g, 6, 28, 36, 30, 10);
+    rr(g, 10.5, 52, 11, 44, 5.5);
+    rr(g, 26.5, 52, 11, 44, 5.5);
+    if (withPet) {
+      g.strokeStyle = '#4B4E4B'; g.lineWidth = 2.2;
+      g.beginPath(); g.moveTo(41, 46); g.quadraticCurveTo(70, 70, 96, 62); g.stroke();
+      rr(g, 66, 68, 34, 13, 6.5);
+      g.beginPath(); g.arc(101, 64, 8, 0, Math.PI * 2); g.fill();
+      rr(g, 69, 76, 5, 20, 2.5); rr(g, 91, 76, 5, 20, 2.5);
+      g.lineWidth = 3; g.strokeStyle = '#232523';
+      g.beginPath(); g.moveTo(67, 72); g.lineTo(60, 63); g.stroke();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;
+    return { tex, aspect: c.width / c.height, feetX: 24 / c.width };
+  }
+  const texPerson = figureTexture(false), texPet = figureTexture(true);
+  const E = HALF - 1.5;
+  const walkers = [
+    { a: [-E, 39.6], b: [E, 39.6], speed: 5.0, t: 0.1, pet: false, s: 1 },
+    { a: [E, 36], b: [-E, 36], speed: 3.6, t: 0.55, pet: true, s: 1 },
+    { a: [-31, E], b: [-31, -E], speed: 4.6, t: 0.3, pet: false, s: 1 },
+    { a: [39, -E], b: [39, E], speed: 5.6, t: 0.75, pet: false, s: 0.78 },
+    { a: [-E, -38], b: [E, -38], speed: 4.0, t: 0.45, pet: false, s: 1 },
+    { a: [DOOR.x, DOOR.z + 1.5], b: [DOOR.x - 4, E], speed: 2.4, t: 0.0, pet: false, s: 1 }
+  ].map((w) => {
+    const T = w.pet ? texPet : texPerson;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.tex, transparent: true, depthWrite: false }));
+    const h = 4.6 * w.s;
+    sp.scale.set(h * T.aspect, h, 1);
+    sp.center.set(T.feetX, 0);
+    world.add(sp);
+    w.sp = sp;
+    w.len = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+    return w;
+  });
+  function updateWalkers(dt) {
+    walkers.forEach((w) => {
+      w.t = (w.t + dt * w.speed / w.len) % 1;
+      const x = w.a[0] + (w.b[0] - w.a[0]) * w.t, z = w.a[1] + (w.b[1] - w.a[1]) * w.t;
+      w.sp.position.set(x, TOP + Math.abs(Math.sin(w.t * w.len * 0.9)) * 0.25, z);
+      w.sp.material.opacity = Math.min(1, Math.min(w.t, 1 - w.t) / 0.08);
+    });
+  }
+
+  // Camera: fixed flat (orthographic) view from 30 degrees up. Only the world turns.
+  const EL = Math.PI / 6;
+  let floors = 3;
+  function frame(n) {
+    const w = host.clientWidth || 358, h = host.clientHeight || 394;
+    renderer.setSize(w, h, false);
+    const aspect = w / h;
+    const Htot = G + 1 + n * FLOOR + 1.2 + 5;
+    const vmin = -34, vmax = Math.cos(EL) * (Htot + TOP) + 31;
+    const vs = Math.max(130 / aspect, vmax - vmin + 10);
+    camera.left = -vs * aspect / 2; camera.right = vs * aspect / 2;
+    camera.top = vs / 2; camera.bottom = -vs / 2;
+    const target = new THREE.Vector3(0, ((vmin + vmax) / 2) / Math.cos(EL), 0);
+    camera.position.set(0, target.y + Math.sin(EL) * 200, Math.cos(EL) * 200);
+    camera.lookAt(target);
+    camera.updateProjectionMatrix();
+  }
+
+  // Controls
+  let period = 60;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let paused = reduce;
+  world.rotation.y = 0.55;
+  const playBtn = document.getElementById('play');
+  const syncPlay = () => { playBtn.textContent = paused ? 'Play' : 'Pause'; };
+  syncPlay();
+  playBtn.addEventListener('click', () => { paused = !paused; syncPlay(); });
+  document.querySelectorAll('[data-sec]').forEach((b) => b.addEventListener('click', () => {
+    period = Number(b.dataset.sec);
+    document.querySelectorAll('[data-sec]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+  const out = document.getElementById('floorsOut');
+  const setFloors = (n) => { floors = Math.max(1, Math.min(8, n)); out.textContent = floors; buildBuilding(floors); };
+  document.getElementById('floorsDown').addEventListener('click', () => setFloors(floors - 1));
+  document.getElementById('floorsUp').addEventListener('click', () => setFloors(floors + 1));
+
+  if (window.ResizeObserver) new ResizeObserver(() => frame(floors)).observe(host);
+  else window.addEventListener('resize', () => frame(floors));
+
+  buildBuilding(floors);
+  updateWalkers(0);
+  updateClouds(0);
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!paused) {
+      world.rotation.y += (Math.PI * 2) * dt / period;
+      updateWalkers(dt);
+      updateClouds(dt);
+    }
+    LIGHT.copy(LIGHT_BASE).applyAxisAngle(Y_AXIS, world.rotation.y);
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
